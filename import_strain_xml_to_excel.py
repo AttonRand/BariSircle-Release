@@ -52,31 +52,7 @@ def parse_filename(filename: str) -> Optional[Tuple[str, str]]:
     parts = basename.split('_')
     if len(parts) < 2:
         return None
-    
-    # Gestisci casi specifici noti
-    if len(parts) >= 4:
-        # Controlla se è un caso come BAZAN_SEQUEIROS_DAVID_WALTER
-        potential_cognome = f"{parts[0]} {parts[1]}"
-        potential_nome = f"{parts[2]} {parts[3]}" if len(parts) >= 4 else parts[2]
-        
-        # Verifica se questo pattern ha senso (cognome composto seguito da nome composto)
-        # Per ora gestiamo casi specifici noti
-        if parts[0].upper() == "BAZAN" and parts[1].upper() == "SEQUEIROS":
-            return (potential_cognome, potential_nome)
-        
-        # Gestisci caso DANILLA_ENEI_MARIA_ISABEL
-        if parts[0].upper() == "DANILLA" and parts[1].upper() == "ENEI":
-            return (potential_cognome, potential_nome)
-        
-        # Gestisci caso CAVALCANTI_FERREIRA_CONCEICAO_DE_MARIA
-        if parts[0].upper() == "CAVALCANTI" and parts[1].upper() == "FERREIRA":
-            # Per questo caso il nome è composto da più parti: CONCEICAO DE MARIA
-            if len(parts) >= 5:
-                potential_nome = f"{parts[2]} {parts[3]} {parts[4]}"
-                return (potential_cognome, potential_nome)
-            else:
-                return (potential_cognome, potential_nome)
-    
+
     # Gestisci cognomi con particelle (DE, DEL, DEGL, D', etc.)
     cognome = parts[0].strip()
     nome = parts[1].strip()
