@@ -38,3 +38,12 @@ Oppure usa l'exe se l'hai compilato.
 - Controlla sempre i match parziali/ambigui nel log
 - Fai backup del file Excel prima di elaborare
 
+## Correzioni Bug
+
+- 17/11/2025: Fixato un bug di corrispondenza univoca con gli attribute.
+- 17/11/2025: Aggiunto errore più dolce se file excel è aperto in background per avvisare utente
+
+## TO DO Futuri
+
+- Estrarre nome e cognome paziente da XML piuttosto che da nome file (o aggiungere opzione).
+
