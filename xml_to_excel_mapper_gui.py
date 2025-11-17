@@ -500,31 +500,59 @@ class MappingEditorFrame(ttk.Frame):
                 return "SKIP_VALIDATION" if response else None
 
             elif len(elements) > 1:
-                # Controlla se hanno tutti lo stesso valore
+                # Controlla quanti elementi hanno effettivamente l'attributo richiesto
                 values = []
                 for elem in elements:
                     val = elem.get(attribute)
-                    if val:
+                    if val is not None:
                         values.append(val)
 
                 unique_values = set(values)
 
+                # Se solo 1 elemento su N ha l'attributo, il mapping è UNIVOCO!
+                if len(values) == 1:
+                    messagebox.showinfo(
+                        "✓ Mapping univoco",
+                        f"✓ Mapping univoco! Trovato 1 elemento su {len(elements)} con l'attributo richiesto.\n\n"
+                        f"XPath: {xpath}\n"
+                        f"Attributo: {attribute}\n"
+                        f"Valore estratto: '{values[0]}'\n\n"
+                        f"Anche se l'XPath trova {len(elements)} tag '<{xpath.split('/')[-1]}>', "
+                        f"solo UNO ha l'attributo '{attribute}'.\n\n"
+                        f"Il mapping verrà aggiunto.",
+                        icon='info'
+                    )
+                    return values[0]
+
+                # Se nessun elemento ha l'attributo
+                if len(values) == 0:
+                    response = messagebox.askyesno(
+                        "Attributo non trovato",
+                        f"⚠️ L'XPath trova {len(elements)} elementi ma NESSUNO ha l'attributo '{attribute}'!\n\n"
+                        f"XPath: {xpath}\n\n"
+                        f"Vuoi comunque aggiungere questo mapping?",
+                        icon='warning'
+                    )
+                    return "SKIP_VALIDATION" if response else None
+
+                # Se più elementi hanno l'attributo con valori diversi
                 msg = (
-                    f"⚠️ ATTENZIONE: L'XPath trova {len(elements)} elementi!\n\n"
+                    f"⚠️ ATTENZIONE: L'XPath trova {len(elements)} elementi e {len(values)} hanno l'attributo '{attribute}'!\n\n"
                     f"XPath: {xpath}\n"
                     f"Attributo: {attribute}\n\n"
                 )
 
                 if len(unique_values) == 1:
-                    msg += f"Tutti gli elementi hanno lo stesso valore: '{values[0]}'\n\n"
-                    msg += "Vuoi comunque aggiungere questo mapping?"
+                    msg += f"Tutti i {len(values)} elementi con l'attributo hanno lo stesso valore: '{values[0]}'\n\n"
+                    msg += "Il programma userà il primo trovato.\n\n"
+                    msg += "Vuoi aggiungere questo mapping?"
                 else:
                     msg += f"Gli elementi hanno valori DIVERSI:\n"
                     for i, val in enumerate(values[:5], 1):  # Mostra max 5 esempi
                         msg += f"  {i}. {val}\n"
                     if len(values) > 5:
                         msg += f"  ... e altri {len(values) - 5}\n"
-                    msg += "\n⚠️ Il risultato sarà AMBIGUO!\n\n"
+                    msg += "\n⚠️ Il risultato sarà AMBIGUO! Il programma userà il primo trovato.\n\n"
                     msg += "Suggerimento: Aggiungi predicati [@attr='value'] per rendere l'XPath univoco.\n\n"
                     msg += "Vuoi comunque aggiungere questo mapping?"
 
@@ -1027,9 +1055,12 @@ class BatchProcessorFrame(ttk.Frame):
                 else:
                     elements = []
 
+            # CORREZIONE: Cerca tra TUTTI gli elementi quello con l'attributo richiesto
             if elements:
-                value = elements[0].get(attribute)
-                return value
+                for elem in elements:
+                    value = elem.get(attribute)
+                    if value is not None:
+                        return value
             return None
         except Exception as e:
             self._log(f"⚠ Errore estrazione valore da {Path(xml_file).name}: {e}", "ERROR")
@@ -1062,7 +1093,18 @@ class BatchProcessorFrame(ttk.Frame):
             self.progress.start()
             self.process_btn.config(state='disabled')
 
-            wb = openpyxl.load_workbook(self.excel_file)
+            try:
+                wb = openpyxl.load_workbook(self.excel_file)
+            except PermissionError:
+                self._log("Errore: File Excel aperto o in uso", "ERROR")
+                messagebox.showerror(
+                    "Permission Denied",
+                    "Permission Denied! Ti sei ricordato di chiudere il file excel prima dell'elaborazione?"
+                )
+                self.progress.stop()
+                self.process_btn.config(state='normal')
+                return
+
             ws = wb.active
 
             xml_files = list(Path(self.xml_folder).glob("*.xml"))
@@ -1155,9 +1197,22 @@ class BatchProcessorFrame(ttk.Frame):
                     continue
 
             # Salva Excel
-            wb.save(self.excel_file)
-            self._log("=" * 60)
-            self._log("✓ Excel salvato con successo")
+            try:
+                wb.save(self.excel_file)
+                self._log("=" * 60)
+                self._log("✓ Excel salvato con successo")
+            except PermissionError:
+                self._log("=" * 60)
+                self._log("Errore: Impossibile salvare il file Excel", "ERROR")
+                messagebox.showerror(
+                    "Permission Denied",
+                    "Permission Denied! Impossibile salvare il file Excel.\n\n"
+                    "Il file potrebbe essere aperto in Excel o utilizzato da un altro programma.\n"
+                    "Chiudi il file e riprova."
+                )
+                self.progress.stop()
+                self.process_btn.config(state='normal')
+                return
             self._log("")
             self._log("STATISTICHE:")
             self._log(f"  File processati: {stats['processed']}/{len(xml_files)}")

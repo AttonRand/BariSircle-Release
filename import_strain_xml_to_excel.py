@@ -139,27 +139,27 @@ def extract_strain_values(xml_file: str, mappings: List[Dict]) -> Dict[str, Opti
             # Cerca l'elemento usando l'XPath configurato
             elements = root.findall(f".//{xpath}")
 
+            # CORREZIONE: Cerca tra TUTTI gli elementi quello con l'attributo richiesto
+            value = None
             if elements:
-                # Prendi il primo elemento trovato
-                element = elements[0]
+                for element in elements:
+                    value = element.get(attribute)
+                    if value is not None:
+                        break  # Trovato! Esci dal loop
 
-                # Estrai il valore dall'attributo specificato
-                value = element.get(attribute)
-
-                if value:
-                    # Converti il valore nel tipo appropriato
-                    if data_type == 'number':
-                        try:
-                            strain_data[name] = float(value)
-                        except ValueError:
-                            logging.warning(f"Impossibile convertire '{value}' in numero per {name}")
-                            strain_data[name] = None
-                    else:
-                        strain_data[name] = value
+            if value:
+                # Converti il valore nel tipo appropriato
+                if data_type == 'number':
+                    try:
+                        strain_data[name] = float(value)
+                    except ValueError:
+                        logging.warning(f"Impossibile convertire '{value}' in numero per {name}")
+                        strain_data[name] = None
                 else:
-                    strain_data[name] = None
+                    strain_data[name] = value
             else:
-                logging.debug(f"Nessun elemento trovato per XPath: {xpath}")
+                if not elements:
+                    logging.debug(f"Nessun elemento trovato per XPath: {xpath}")
                 strain_data[name] = None
 
     except Exception as e:
